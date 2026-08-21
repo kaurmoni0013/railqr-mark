@@ -1,15 +1,19 @@
+import { useState } from 'react';
 import { usePagination } from '@/hooks/useApi';
 import { api } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
+import { useTranslation } from '@/i18n/LanguageContext';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { SkeletonTable } from '@/components/ui/Skeleton';
 import EmptyState from '@/components/ui/EmptyState';
 import { Bell } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import ConfirmResolveModal from '@/components/ConfirmResolveModal';
 
 export default function AlertsPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const {
     data,
     page,
@@ -21,6 +25,11 @@ export default function AlertsPage() {
     refetch,
   } = usePagination((p) => api.alerts.list(p));
 
+  const [resolveModalOpen, setResolveModalOpen] = useState(false);
+  const [resolveAlertId, setResolveAlertId] = useState<number | null>(null);
+  const [resolveAlertTitle, setResolveAlertTitle] = useState('');
+  const [resolving, setResolving] = useState(false);
+
   async function handleAcknowledge(id: number) {
     try {
       await api.alerts.acknowledge(id);
@@ -31,13 +40,25 @@ export default function AlertsPage() {
     }
   }
 
-  async function handleResolve(id: number) {
+  function openResolveModal(id: number, title: string) {
+    setResolveAlertId(id);
+    setResolveAlertTitle(title);
+    setResolveModalOpen(true);
+  }
+
+  async function handleResolveConfirm(email: string) {
+    if (!resolveAlertId) return;
+    setResolving(true);
     try {
-      await api.alerts.resolve(id, user?.email);
-      toast.success('Alert resolved');
+      await api.alerts.resolve(resolveAlertId, email);
+      toast.success(t('alerts.res_ok'));
+      setResolveModalOpen(false);
+      setResolveAlertId(null);
       refetch();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setResolving(false);
     }
   }
 
@@ -50,8 +71,8 @@ export default function AlertsPage() {
       ) : data.length === 0 ? (
         <EmptyState
           icon={Bell}
-          title="No alerts"
-          description="All clear — no active alerts."
+          title={t('alerts.empty')}
+          description={t('alerts.empty_desc')}
         />
       ) : (
         <>
@@ -59,11 +80,11 @@ export default function AlertsPage() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-gray-100 text-xs text-gray-500">
-                  <th className="px-4 py-3 font-medium">Alert</th>
-                  <th className="px-4 py-3 font-medium">Severity</th>
-                  <th className="px-4 py-3 font-medium">Type</th>
-                  <th className="px-4 py-3 font-medium">Created</th>
-                  <th className="px-4 py-3 font-medium">Actions</th>
+                      <th className="px-4 py-3 font-medium">Alert</th>
+                      <th className="px-4 py-3 font-medium">Severity</th>
+                      <th className="px-4 py-3 font-medium">Type</th>
+                      <th className="px-4 py-3 font-medium">Created</th>
+                      <th className="px-4 py-3 font-medium">{t('common.confirm')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -94,10 +115,10 @@ export default function AlertsPage() {
                         )}
                         {!a.is_resolved && (
                           <button
-                            onClick={() => handleResolve(a.id)}
+                            onClick={() => openResolveModal(a.id, a.title)}
                             className="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] text-emerald-700 hover:bg-emerald-100"
                           >
-                            Resolve
+                            {t('alerts.resolve')}
                           </button>
                         )}
                       </div>
@@ -132,6 +153,16 @@ export default function AlertsPage() {
           </div>
         </>
       )}
+      <ConfirmResolveModal
+        open={resolveModalOpen}
+        onClose={() => {
+          setResolveModalOpen(false);
+          setResolveAlertId(null);
+        }}
+        onConfirm={handleResolveConfirm}
+        alertTitle={resolveAlertTitle}
+        loading={resolving}
+      />
     </div>
   );
 }

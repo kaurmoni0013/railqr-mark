@@ -14,11 +14,15 @@ import {
   Video,
   VideoOff,
   RefreshCw,
+  Smartphone,
+  Copy,
 } from 'lucide-react';
 import { api } from '@/services/api';
+import { useTranslation } from '@/i18n/LanguageContext';
 import type { TrackFittingDetail } from '@/types';
 
 type ScanResult = 'success' | 'error' | null;
+type ScanFeedback = 'looking' | 'checking' | 'notfound';
 
 const statusColor = (status: string) => {
   switch (status) {
@@ -32,7 +36,8 @@ const statusColor = (status: string) => {
 
 export default function ScanPage() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'camera' | 'manual'>('camera');
+  const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState<'camera' | 'manual' | 'phone'>('camera');
   const [qrInput, setQrInput] = useState('');
   const [manualSearch, setManualSearch] = useState('');
   const [loading, setLoading] = useState(false);
@@ -48,6 +53,14 @@ export default function ScanPage() {
   const [cameraError, setCameraError] = useState('');
   const [scanning, setScanning] = useState(false);
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
+
+  const [phoneUrl] = useState(
+    () => `http://${window.location.hostname}:5173/scan?phone=1`
+  );
+  const [copied, setCopied] = useState(false);
+  const [framesScanned, setFramesScanned] = useState(0);
+  const [lastScanStatus, setLastScanStatus] = useState<ScanFeedback>('looking');
+  const [autoStartPending, setAutoStartPending] = useState(false);
 
   const stopCamera = useCallback(() => {
     if (scanIntervalRef.current) {
@@ -76,6 +89,8 @@ export default function ScanPage() {
     const dataUrl = canvas.toDataURL('image/png');
     const base64 = dataUrl.split(',')[1];
 
+    setFramesScanned((n) => n + 1);
+    setLastScanStatus('checking');
     setScanning(true);
     try {
       const result = await api.camera.scan(base64);
@@ -84,9 +99,11 @@ export default function ScanPage() {
         const detail = await api.fittings.get(result.fitting_id);
         setResultFitting(detail);
         setScanResult('success');
+      } else {
+        setLastScanStatus('notfound');
       }
     } catch {
-      // scan failed silently, keep trying
+      setLastScanStatus('notfound');
     } finally {
       setScanning(false);
     }
@@ -143,6 +160,29 @@ export default function ScanPage() {
     };
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('phone') === '1') {
+      setActiveTab('camera');
+      setAutoStartPending(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (autoStartPending) {
+      setAutoStartPending(false);
+      startCamera();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStartPending]);
+
+  useEffect(() => {
+    if (lastScanStatus === 'notfound') {
+      const t = setTimeout(() => setLastScanStatus('looking'), 1200);
+      return () => clearTimeout(t);
+    }
+  }, [lastScanStatus]);
+
   const handleVerify = async (data: string) => {
     if (!data.trim()) return;
     setLoading(true);
@@ -197,10 +237,33 @@ export default function ScanPage() {
     setQrInput('');
     setManualSearch('');
     setErrorMsg('');
+    setFramesScanned(0);
+    setLastScanStatus('looking');
     stopCamera();
   };
 
-  const switchTab = (tab: 'camera' | 'manual') => {
+  const copyPhoneUrl = async () => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(phoneUrl);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = phoneUrl;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  const switchTab = (tab: 'camera' | 'manual' | 'phone') => {
     reset();
     setActiveTab(tab);
   };
@@ -211,8 +274,8 @@ export default function ScanPage() {
         <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-rail-blue/10 mb-3">
           <QrCode className="w-7 h-7 text-rail-blue" />
         </div>
-        <h1 className="text-2xl font-bold text-slate-800">Scan QR Code</h1>
-        <p className="text-sm text-rail-steel mt-1">Scan or search for track fitting digital passports</p>
+        <h1 className="text-2xl font-bold text-slate-800">{t('scan.title')}</h1>
+        <p className="text-sm text-rail-steel mt-1">{t('scan.subtitle')}</p>
       </motion.div>
 
       <div className="flex gap-2 justify-center">
@@ -225,7 +288,7 @@ export default function ScanPage() {
           }`}
         >
           <Camera className="w-4 h-4" />
-          Camera Scanner
+          {t('scan.camera_tab')}
         </button>
         <button
           onClick={() => switchTab('manual')}
@@ -236,7 +299,18 @@ export default function ScanPage() {
           }`}
         >
           <Keyboard className="w-4 h-4" />
-          Manual Entry
+          {t('scan.manual_tab')}
+        </button>
+        <button
+          onClick={() => switchTab('phone')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+            activeTab === 'phone'
+              ? 'bg-rail-blue text-white shadow-md'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <Smartphone className="w-4 h-4" />
+          {t('scan.phone_tab')}
         </button>
       </div>
 
@@ -262,7 +336,7 @@ export default function ScanPage() {
                       className="inline-flex items-center gap-2 px-6 py-3 bg-rail-blue text-white rounded-xl text-sm font-medium hover:bg-rail-blue/90 transition-all shadow-md"
                     >
                       <Camera className="w-4 h-4" />
-                      Start Camera
+                      {t('scan.start')}
                     </button>
                     {cameraError && (
                       <p className="text-xs text-red-500">{cameraError}</p>
@@ -292,6 +366,26 @@ export default function ScanPage() {
                             />
                           </div>
                         )}
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 pointer-events-none">
+                          <div
+                            className={`px-3 py-1 rounded-full text-xs font-medium shadow-sm transition-colors ${
+                              lastScanStatus === 'checking'
+                                ? 'bg-rail-blue text-white'
+                                : lastScanStatus === 'notfound'
+                                  ? 'bg-slate-900/70 text-slate-200'
+                                  : 'bg-white/85 text-slate-700 animate-pulse'
+                            }`}
+                          >
+                            {lastScanStatus === 'checking'
+                              ? t('scan.checking')
+                              : lastScanStatus === 'notfound'
+                                ? t('scan.no_qr')
+                                : t('scan.looking')}
+                          </div>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-black/40 text-white/80">
+                            Scanned {framesScanned} frame{framesScanned === 1 ? '' : 's'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                     <style>{`
@@ -302,7 +396,7 @@ export default function ScanPage() {
                     `}</style>
                     <div className="flex items-center justify-between">
                       <p className="text-xs text-slate-400">
-                        {scanning ? 'Scanning...' : 'Point camera at QR code'}
+                        {scanning ? t('scan.scanning') : t('scan.point')}
                       </p>
                       <div className="flex gap-1.5">
                         <button
@@ -310,14 +404,14 @@ export default function ScanPage() {
                           className="flex items-center gap-1 px-3 py-1.5 text-xs text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
                         >
                           <RefreshCw className="w-3 h-3" />
-                          Flip
+                          {t('scan.flip')}
                         </button>
                         <button
                           onClick={stopCamera}
                           className="flex items-center gap-1 px-3 py-1.5 text-xs text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
                         >
                           <VideoOff className="w-3 h-3" />
-                          Stop
+                          {t('scan.stop')}
                         </button>
                       </div>
                     </div>
@@ -325,7 +419,7 @@ export default function ScanPage() {
                 )}
 
                 <div className="border-t border-slate-100 pt-4">
-                  <p className="text-center text-xs text-slate-400 mb-2">Or enter QR data manually</p>
+                  <p className="text-center text-xs text-slate-400 mb-2">{t('scan.or_manual')}</p>
                   <div className="flex gap-2">
                     <input
                       type="text"
@@ -345,7 +439,7 @@ export default function ScanPage() {
                       ) : (
                         <QrCode className="w-4 h-4" />
                       )}
-                      Verify
+                      {t('scan.verify')}
                     </button>
                   </div>
                 </div>
@@ -357,7 +451,7 @@ export default function ScanPage() {
                 <div className="max-w-md mx-auto">
                   <div className="text-center mb-6">
                     <Search className="w-10 h-10 text-rail-blue/30 mx-auto mb-3" />
-                    <p className="text-sm text-slate-600">Enter a Fitting ID or Fitting Code to search</p>
+                    <p className="text-sm text-slate-600">{t('scan.enter_id')}</p>
                   </div>
                   <div className="flex gap-2">
                     <input
@@ -378,9 +472,48 @@ export default function ScanPage() {
                       ) : (
                         <Search className="w-4 h-4" />
                       )}
-                      Search
+                      {t('scan.search')}
                     </button>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'phone' && (
+              <div className="glass-card-static p-8">
+                <div className="max-w-md mx-auto text-center space-y-4">
+                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-rail-blue/10">
+                    <Smartphone className="w-7 h-7 text-rail-blue" />
+                  </div>
+                  <p className="text-sm text-slate-600">
+                    {t('scan.phone_desc')}
+                  </p>
+                  <div className="inline-block p-3 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(phoneUrl)}`}
+                      alt="QR code linking to the phone scanner"
+                      width={220}
+                      height={220}
+                      className="rounded-lg"
+                    />
+                  </div>
+                  <div className="text-xs font-mono text-slate-500 break-all bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5">
+                    {phoneUrl}
+                  </div>
+                  <button
+                    onClick={copyPhoneUrl}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-rail-blue text-white rounded-xl text-sm font-medium hover:bg-rail-blue/90 transition-all shadow-md"
+                  >
+                    {copied ? (
+                      <CheckCircle2 className="w-4 h-4" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                    {copied ? 'Copied!' : t('scan.phone_title')}
+                  </button>
+                  <p className="text-xs text-slate-400">
+                    Make sure your phone is on the same network as this computer.
+                  </p>
                 </div>
               </div>
             )}
@@ -404,8 +537,8 @@ export default function ScanPage() {
               >
                 <CheckCircle2 className="w-9 h-9 text-green-500" />
               </motion.div>
-              <h2 className="text-lg font-bold text-slate-800">QR Verified Successfully</h2>
-              <p className="text-sm text-slate-500">Fitting found in the system</p>
+              <h2 className="text-lg font-bold text-slate-800">{t('scan.verified')}</h2>
+              <p className="text-sm text-slate-500">{t('scan.found')}</p>
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 p-5 mb-4">
@@ -447,14 +580,14 @@ export default function ScanPage() {
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-rail-blue text-white rounded-xl text-sm font-medium hover:bg-rail-blue/90 transition-all"
               >
                 <ExternalLink className="w-4 h-4" />
-                View Full Passport
+                {t('common.view_passport')}
                 <ArrowRight className="w-4 h-4" />
               </button>
               <button
                 onClick={reset}
                 className="px-5 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-200 transition-all"
               >
-                Scan Again
+                {t('common.scan_again')}
               </button>
             </div>
           </motion.div>
@@ -477,7 +610,7 @@ export default function ScanPage() {
               >
                 <XCircle className="w-9 h-9 text-red-500" />
               </motion.div>
-              <h2 className="text-lg font-bold text-slate-800">QR Not Recognized</h2>
+              <h2 className="text-lg font-bold text-slate-800">{t('scan.not_found')}</h2>
               <p className="text-sm text-slate-500">{errorMsg}</p>
             </div>
 
@@ -487,14 +620,14 @@ export default function ScanPage() {
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-rail-blue text-white rounded-xl text-sm font-medium hover:bg-rail-blue/90 transition-all"
               >
                 <QrCode className="w-4 h-4" />
-                Try Again
+                {t('scan.try_again')}
               </button>
               <button
                 onClick={() => { reset(); setActiveTab('manual'); }}
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-200 transition-all"
               >
                 <Search className="w-4 h-4" />
-                Enter ID Manually
+                {t('scan.enter_manually')}
               </button>
             </div>
 
@@ -503,7 +636,7 @@ export default function ScanPage() {
               className="w-full mt-3 py-2 text-xs text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center gap-1"
             >
               <AlertTriangle className="w-3 h-3" />
-              Report Damaged QR
+              {t('scan.report_damaged')}
             </button>
           </motion.div>
         )}

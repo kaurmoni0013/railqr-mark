@@ -3,10 +3,12 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { QrCode, Mail, Lock, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useTranslation } from '@/i18n/LanguageContext';
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
@@ -44,10 +46,10 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="glass-card-static space-y-5 p-8">
-          <h2 className="text-center text-lg font-semibold text-gray-800">Sign In</h2>
+          <h2 className="text-center text-lg font-semibold text-gray-800">{t('login.title')}</h2>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Email</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600">{t('login.email')}</label>
             <div className="relative">
               <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
@@ -62,7 +64,7 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Password</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600">{t('login.password')}</label>
             <div className="relative">
               <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
@@ -84,20 +86,20 @@ export default function LoginPage() {
             {loading ? (
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
             ) : (
-              <>
-                Sign In
-                <ArrowRight size={16} />
+                <>
+                  {t('login.sign_in')}
+                  <ArrowRight size={16} />
               </>
             )}
           </button>
 
           <p className="text-center text-[11px] text-gray-400">
-            Demo: admin@railsaathi.in / Admin@123
+            {t('login.demo')}
           </p>
         </form>
 
         <p className="mt-6 text-center text-[10px] text-navy-200/30">
-          Prototype — Not an official Indian Railways production system.
+          {t('login.disclaimer')}
         </p>
       </motion.div>
     </div>

@@ -21,44 +21,47 @@ import {
   X,
   Search,
   ChevronRight,
+  Globe,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { api } from '@/services/api';
+import { useTranslation, type Lang } from '@/i18n/LanguageContext';
 import ChatBot from '@/components/ChatBot';
 
 interface NavItem {
   to: string;
-  label: string;
+  labelKey: string;
   icon: React.ElementType;
   adminOnly?: boolean;
 }
 
 const navItems: NavItem[] = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/scan', label: 'Scan QR', icon: ScanLine },
-  { to: '/qr-generate', label: 'QR Generate', icon: QrCode },
-  { to: '/fittings', label: 'Track Assets', icon: Package },
-  { to: '/inspections', label: 'Inspections', icon: ClipboardCheck },
-  { to: '/maintenance', label: 'Maintenance', icon: Wrench },
-  { to: '/map', label: 'Map', icon: Map },
-  { to: '/ai', label: 'AI Analytics', icon: Brain },
-  { to: '/alerts', label: 'Alerts', icon: Bell },
-  { to: '/reports', label: 'Reports', icon: FileText },
-  { to: '/users', label: 'Users', icon: Users, adminOnly: true },
-  { to: '/settings', label: 'Settings', icon: Settings },
+  { to: '/', labelKey: 'nav.dashboard', icon: LayoutDashboard },
+  { to: '/scan', labelKey: 'nav.scan', icon: ScanLine },
+  { to: '/qr-generate', labelKey: 'nav.qr_generate', icon: QrCode },
+  { to: '/fittings', labelKey: 'nav.track_assets', icon: Package },
+  { to: '/inspections', labelKey: 'nav.inspections', icon: ClipboardCheck },
+  { to: '/maintenance', labelKey: 'nav.maintenance', icon: Wrench },
+  { to: '/map', labelKey: 'nav.map', icon: Map },
+  { to: '/ai', labelKey: 'nav.ai_analytics', icon: Brain },
+  { to: '/alerts', labelKey: 'nav.alerts', icon: Bell },
+  { to: '/reports', labelKey: 'nav.reports', icon: FileText },
+  { to: '/users', labelKey: 'nav.users', icon: Users, adminOnly: true },
+  { to: '/settings', labelKey: 'nav.settings', icon: Settings },
 ];
 
-function getActiveNavTitle(pathname: string): string {
-  if (pathname === '/') return 'Dashboard';
+function getActiveNavTitle(pathname: string, t: (k: string) => string): string {
+  if (pathname === '/') return t('nav.dashboard');
   if (pathname.startsWith('/fittings/')) return 'Asset Detail';
   const found = navItems.find(
     (n) => n.to !== '/' && pathname === n.to,
   );
-  return found?.label ?? 'Dashboard';
+  return found ? t(found.labelKey) : t('nav.dashboard');
 }
 
 export default function AppLayout() {
   const { user, logout, hasRole } = useAuth();
+  const { t, lang, setLang } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -81,7 +84,7 @@ export default function AppLayout() {
     setSidebarOpen(false);
   }, [location.pathname]);
 
-  const pageTitle = getActiveNavTitle(location.pathname);
+  const pageTitle = getActiveNavTitle(location.pathname, t);
   const initials = user?.full_name
     ? user.full_name
         .split(' ')
@@ -126,7 +129,7 @@ export default function AppLayout() {
                         : 'text-navy-200/40 group-hover:text-navy-200/70',
                     )}
                   />
-                  <span>{item.label}</span>
+                  <span>{t(item.labelKey)}</span>
                   {isActive && (
                     <ChevronRight
                       size={14}
@@ -147,17 +150,17 @@ export default function AppLayout() {
       {/* Government bar */}
       <div className="flex items-center justify-between bg-navy px-4 py-1.5 text-[11px] text-white/70">
         <div className="flex items-center gap-1.5">
-          <span className="font-medium text-white/90">Government of India</span>
+          <span className="font-medium text-white/90">{t('gov.india')}</span>
           <span className="text-white/30">|</span>
-          <span>Ministry of Railways</span>
+          <span>{t('gov.ministry')}</span>
           <span className="text-white/30">|</span>
           <span className="text-rail-blue font-medium">
-            Railway Asset Intelligence System
+            {t('gov.system')}
           </span>
         </div>
         <div className="flex items-center gap-2">
           <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
-          <span>System Status: Operational</span>
+          <span>{t('gov.status')}</span>
           <span className="text-white/30">|</span>
           <span className="font-mono text-[10px] text-white/80">
             {format(currentTime, 'dd MMM yyyy, HH:mm:ss')}
@@ -300,12 +303,22 @@ export default function AppLayout() {
             </div>
 
             <div className="flex items-center gap-3">
+              {/* Language Toggle */}
+              <button
+                onClick={() => setLang(lang === 'en' ? 'hi' : 'en')}
+                className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white/60 px-2.5 py-1.5 text-xs font-medium text-rail-steel transition-colors hover:bg-white"
+                title={lang === 'en' ? '\u0939\u093f\u0928\u094d\u0926\u0940 \u092e\u0947\u0902 \u092c\u0926\u0932\u0947\u0902' : 'Switch to English'}
+              >
+                <Globe size={14} />
+                {lang === 'en' ? '\u0939\u093f\u0928\u094d\u0926\u0940' : 'English'}
+              </button>
+
               {/* Search */}
               <div className="hidden items-center gap-2 rounded-lg border border-gray-200 bg-white/60 px-3 py-1.5 text-sm text-rail-steel md:flex">
                 <Search size={15} />
                 <input
                   type="text"
-                  placeholder="Search assets..."
+                  placeholder={t('common.search')}
                   className="w-40 bg-transparent outline-none placeholder:text-rail-steel/50"
                 />
               </div>

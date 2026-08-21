@@ -34,7 +34,10 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { format } from 'date-fns';
 import { api } from '@/services/api';
+import toast from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useTranslation } from '@/i18n/LanguageContext';
+import ConfirmResolveModal from '@/components/ConfirmResolveModal';
 import type {
   DashboardSummary,
   TrendData,
@@ -69,11 +72,11 @@ function useAnimatedCount(target: number, duration = 1200) {
   return count;
 }
 
-function getGreeting() {
+function getGreeting(t: (k: string) => string) {
   const hour = new Date().getHours();
-  if (hour < 12) return 'Good Morning';
-  if (hour < 17) return 'Good Afternoon';
-  return 'Good Evening';
+  if (hour < 12) return t('dash.gm');
+  if (hour < 17) return t('dash.ga');
+  return t('dash.ge');
 }
 
 function Sparkline({ data, color }: { data: number[]; color: string }) {
@@ -126,9 +129,9 @@ const PIE_COLORS: Record<string, string> = {
 };
 
 const trendTabs = [
-  { key: 'maintenance', label: 'Maintenance Activity' },
-  { key: 'inspection', label: 'Inspection Volume' },
-  { key: 'defect', label: 'Defect Rate' },
+  { key: 'maintenance', labelKey: 'dash.trend_maint' },
+  { key: 'inspection', labelKey: 'dash.trend_insp' },
+  { key: 'defect', labelKey: 'dash.trend_defect' },
 ] as const;
 
 type TrendTab = typeof trendTabs[number]['key'];
@@ -156,6 +159,7 @@ function TableSkeleton({ rows = 5 }: { rows?: number }) {
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [trends, setTrends] = useState<TrendData[]>([]);
   const [healthDist, setHealthDist] = useState<HealthDistribution[]>([]);
@@ -166,6 +170,10 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [trendTab, setTrendTab] = useState<TrendTab>('maintenance');
+  const [resolveModalOpen, setResolveModalOpen] = useState(false);
+  const [resolveAlertId, setResolveAlertId] = useState<number | null>(null);
+  const [resolveAlertTitle, setResolveAlertTitle] = useState('');
+  const [resolving, setResolving] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -195,6 +203,22 @@ export default function DashboardPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  async function handleResolveConfirm(email: string) {
+    if (!resolveAlertId) return;
+    setResolving(true);
+    try {
+      await api.alerts.resolve(resolveAlertId, email);
+      toast.success(t('alerts.res_ok'));
+      setResolveModalOpen(false);
+      setResolveAlertId(null);
+      loadData();
+    } catch {
+      toast.error('Failed to resolve alert');
+    } finally {
+      setResolving(false);
+    }
+  }
+
   const totalFittings = useAnimatedCount(summary?.total_fittings ?? 0);
   const totalInspections = useAnimatedCount(summary?.total_inspections ?? 0);
   const openTickets = useAnimatedCount(summary?.open_tickets ?? 0);
@@ -202,7 +226,7 @@ export default function DashboardPage() {
 
   const kpiCards = [
     {
-      label: 'Total Track Fittings',
+      labelKey: 'dash.total_fittings',
       value: totalFittings,
       change: summary ? ((summary.healthy_count / (summary.total_fittings || 1)) * 100).toFixed(1) : '0',
       changeDir: 'up' as const,
@@ -212,7 +236,7 @@ export default function DashboardPage() {
       path: '/fittings',
     },
     {
-      label: 'Inspections Completed',
+      labelKey: 'dash.inspections',
       value: totalInspections,
       change: summary ? (((summary.total_inspections - summary.pending_inspections) / (summary.total_inspections || 1)) * 100).toFixed(1) : '0',
       changeDir: 'up' as const,
@@ -222,7 +246,7 @@ export default function DashboardPage() {
       path: '/inspections',
     },
     {
-      label: 'Pending Maintenance',
+      labelKey: 'dash.pending_maint',
       value: openTickets,
       change: summary ? ((summary.open_tickets / (summary.total_fittings || 1)) * 100).toFixed(1) : '0',
       changeDir: 'up' as const,
@@ -232,7 +256,7 @@ export default function DashboardPage() {
       path: '/maintenance',
     },
     {
-      label: 'Critical Alerts',
+      labelKey: 'dash.critical_alerts',
       value: criticalAlerts,
       change: summary ? ((summary.critical_alerts / (summary.active_alerts || 1)) * 100).toFixed(1) : '0',
       changeDir: criticalAlerts > 0 ? 'up' : 'down',
@@ -306,7 +330,7 @@ export default function DashboardPage() {
           <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-3" />
           <p className="text-lg font-semibold text-slate-700 mb-2">{error}</p>
           <button onClick={loadData} className="px-4 py-2 bg-rail-blue text-white rounded-lg text-sm hover:bg-rail-blue/90 transition-colors">
-            Retry
+            {t('common.retry')}
           </button>
         </div>
       </div>
@@ -317,15 +341,15 @@ export default function DashboardPage() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <h1 className="text-2xl font-bold text-slate-800">{getGreeting()}, Railway Officer</h1>
-        <p className="text-sm text-rail-steel mt-1">Real-time overview of track fitting health and maintenance intelligence.</p>
+        <h1 className="text-2xl font-bold text-slate-800">{getGreeting(t)}, Railway Officer</h1>
+        <p className="text-sm text-rail-steel mt-1">{t('dash.subtitle')}</p>
       </motion.div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpiCards.map((card, idx) => (
           <motion.div
-            key={card.label}
+            key={card.labelKey}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: idx * 0.1 }}
@@ -340,7 +364,7 @@ export default function DashboardPage() {
             </div>
             <div className="text-3xl font-bold text-slate-800 mb-1">{card.value.toLocaleString()}</div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-rail-steel">{card.label}</span>
+              <span className="text-sm text-rail-steel">{t(card.labelKey)}</span>
               <span className={`text-xs font-medium flex items-center gap-0.5 ${
                 card.changeDir === 'up' ? 'text-green-600' : 'text-red-500'
               }`}>
@@ -363,7 +387,7 @@ export default function DashboardPage() {
           className="lg:col-span-2 glass-card-static p-5"
         >
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-slate-800">5-Year Maintenance Intelligence</h2>
+            <h2 className="text-lg font-semibold text-slate-800">{t('dash.5yr')}</h2>
             <div className="flex gap-1">
               {trendTabs.map((tab) => (
                 <button
@@ -375,7 +399,7 @@ export default function DashboardPage() {
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  {tab.label}
+                  {t(tab.labelKey)}
                 </button>
               ))}
             </div>
@@ -411,7 +435,7 @@ export default function DashboardPage() {
           transition={{ duration: 0.4, delay: 0.5 }}
           className="glass-card-static p-5"
         >
-          <h2 className="text-lg font-semibold text-slate-800 mb-4">Asset Health Status</h2>
+          <h2 className="text-lg font-semibold text-slate-800 mb-4">{t('dash.health_status')}</h2>
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
               <Pie
@@ -472,7 +496,7 @@ export default function DashboardPage() {
           className="glass-card-static p-5"
         >
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-slate-800">Railway Network Map</h2>
+            <h2 className="text-lg font-semibold text-slate-800">{t('dash.map')}</h2>
             <MapPin className="w-5 h-5 text-rail-steel" />
           </div>
           <div className="h-[300px] rounded-xl overflow-hidden">
@@ -522,12 +546,12 @@ export default function DashboardPage() {
           className="glass-card-static p-5"
         >
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-slate-800">AI Insights</h2>
+            <h2 className="text-lg font-semibold text-slate-800">{t('dash.ai_insights')}</h2>
             <Brain className="w-5 h-5 text-rail-steel" />
           </div>
           <div className="space-y-3">
             {insights.length === 0 && (
-              <p className="text-sm text-slate-400 text-center py-8">No insights available</p>
+              <p className="text-sm text-slate-400 text-center py-8">{t('dash.no_insights')}</p>
             )}
             {insights.map((insight) => {
               const Icon = insightIcon(insight.insight_type);
@@ -583,12 +607,12 @@ export default function DashboardPage() {
           className="lg:col-span-3 glass-card-static p-5"
         >
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-slate-800">Recent Inspections</h2>
+            <h2 className="text-lg font-semibold text-slate-800">{t('dash.recent_insp')}</h2>
             <button
               onClick={() => navigate('/inspections')}
               className="text-xs font-medium text-rail-blue hover:text-rail-blue/80 flex items-center gap-1"
             >
-              View All <ChevronRight className="w-3 h-3" />
+              {t('common.view_all')} <ChevronRight className="w-3 h-3" />
             </button>
           </div>
           <div className="overflow-x-auto">
@@ -645,7 +669,7 @@ export default function DashboardPage() {
                 ))}
                 {(!inspections?.items || inspections.items.length === 0) && (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-sm text-slate-400">No recent inspections</td>
+                    <td colSpan={5} className="py-8 text-center text-sm text-slate-400">{t('dash.no_insp')}</td>
                   </tr>
                 )}
               </tbody>
@@ -661,12 +685,12 @@ export default function DashboardPage() {
           className="lg:col-span-2 glass-card-static p-5"
         >
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-slate-800">Live Alert Center</h2>
+            <h2 className="text-lg font-semibold text-slate-800">{t('dash.live_alerts')}</h2>
             <Bell className="w-5 h-5 text-rail-steel" />
           </div>
           <div className="space-y-2.5 max-h-[360px] overflow-y-auto">
             {alerts.length === 0 && (
-              <p className="text-sm text-slate-400 text-center py-8">No active alerts</p>
+              <p className="text-sm text-slate-400 text-center py-8">{t('dash.no_alerts')}</p>
             )}
             {alerts.slice(0, 8).map((alert) => (
               <div
@@ -693,7 +717,7 @@ export default function DashboardPage() {
                       )}
                       {!alert.is_resolved && (
                         <button
-                          onClick={(e) => { e.stopPropagation(); api.alerts.resolve(alert.id, user?.email).then(() => loadData()); }}
+                          onClick={(e) => { e.stopPropagation(); setResolveAlertId(alert.id); setResolveAlertTitle(alert.title); setResolveModalOpen(true); }}
                           className="px-2 py-0.5 text-[10px] font-medium bg-green-50 text-green-600 rounded hover:bg-green-100 transition-colors"
                         >
                           Resolve
@@ -707,6 +731,13 @@ export default function DashboardPage() {
           </div>
         </motion.div>
       </div>
+      <ConfirmResolveModal
+        open={resolveModalOpen}
+        onClose={() => { setResolveModalOpen(false); setResolveAlertId(null); }}
+        onConfirm={handleResolveConfirm}
+        alertTitle={resolveAlertTitle}
+        loading={resolving}
+      />
     </div>
   );
 }
