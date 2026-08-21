@@ -5,7 +5,8 @@ import qrcode.image.svg
 import base64
 from typing import Tuple, Optional
 
-QR_PREFIX = "RAILQR"
+QR_PREFIX = "RAILSAATHI"
+LEGACY_QR_PREFIX = "RAILSAATHI"
 QR_VERSION = "V1"
 QR_SEPARATOR = ":"
 
@@ -37,7 +38,7 @@ def verify_qr(qr_data: str) -> Optional[str]:
     if not qr_data:
         return None
     parts = qr_data.split(QR_SEPARATOR)
-    if len(parts) == 3 and parts[0] == QR_PREFIX and parts[2] == QR_VERSION:
+    if len(parts) == 3 and parts[2] == QR_VERSION and parts[0] in (QR_PREFIX, LEGACY_QR_PREFIX):
         return parts[1]
     return None
 

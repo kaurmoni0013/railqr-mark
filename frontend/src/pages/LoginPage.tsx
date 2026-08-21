@@ -39,7 +39,7 @@ export default function LoginPage() {
           <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-rail-blue">
             <QrCode size={28} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">RailQR Mark</h1>
+          <h1 className="text-2xl font-bold text-white">RailSaathi</h1>
           <p className="mt-1 text-sm text-navy-200/50">Railway Asset Intelligence System</p>
         </div>
 
@@ -55,7 +55,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="officer@railqr.gov.in"
+                placeholder="officer@railsaathi.in"
                 className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-rail-blue focus:ring-2 focus:ring-rail-blue/20"
               />
             </div>
@@ -92,7 +92,7 @@ export default function LoginPage() {
           </button>
 
           <p className="text-center text-[11px] text-gray-400">
-            Demo: admin@railqrmark.in / Admin@123
+            Demo: admin@railsaathi.in / Admin@123
           </p>
         </form>
 

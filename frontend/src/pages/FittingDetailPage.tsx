@@ -251,7 +251,7 @@ export default function FittingDetailPage() {
         </div>
         <div className="flex-1">
           <div className="text-sm font-semibold text-slate-700">Digital Passport QR</div>
-          <div className="text-xs text-slate-500 font-mono mt-0.5">RAILQR:{fitting.fitting_code}:V1</div>
+          <div className="text-xs text-slate-500 font-mono mt-0.5">RAILSAATHI:{fitting.fitting_code}:V1</div>
         </div>
         <button
           onClick={() => navigate(`/qr-generate?fitting_id=${fitting.id}`)}

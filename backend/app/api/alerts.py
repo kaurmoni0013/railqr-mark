@@ -1,6 +1,7 @@
 import math
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from app.core.database import get_db
@@ -9,6 +10,10 @@ from app.models.models import Alert, User
 from app.schemas.schemas import AlertRead, PaginatedResponse
 
 router = APIRouter(prefix="/api/alerts", tags=["Alerts"])
+
+
+class AlertResolveRequest(BaseModel):
+    resolved_by_email: str
 
 
 @router.get("", response_model=PaginatedResponse)
@@ -77,6 +82,7 @@ def acknowledge_alert(
 @router.post("/{alert_id}/resolve", response_model=AlertRead)
 def resolve_alert(
     alert_id: int,
+    body: AlertResolveRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -84,9 +90,14 @@ def resolve_alert(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
+    resolver_check = db.query(User).filter(User.email == body.resolved_by_email, User.is_active == True).first()
+    if not resolver_check:
+        raise HTTPException(status_code=400, detail="Invalid email: no active user found with that email")
+
     alert.is_resolved = True
     alert.resolved_by = current_user.id
     alert.resolved_at = datetime.utcnow()
+    alert.resolved_by_email = body.resolved_by_email
     if not alert.is_acknowledged:
         alert.is_acknowledged = True
         alert.acknowledged_by = current_user.id

@@ -229,6 +229,7 @@ class Inspection(Base):
     remarks = Column(Text, nullable=True)
     recommended_action = Column(Text, nullable=True)
     health_score = Column(Float, nullable=True)
+    completed_by_email = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     fitting = relationship("TrackFitting", back_populates="inspections")
@@ -250,6 +251,7 @@ class MaintenanceTicket(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     due_date = Column(DateTime, nullable=True)
     completed_date = Column(DateTime, nullable=True)
+    completed_by_email = Column(String(255), nullable=True)
 
     fitting = relationship("TrackFitting", back_populates="maintenance_tickets")
     assignee = relationship("User", back_populates="assigned_tickets", foreign_keys=[assigned_to])
@@ -287,6 +289,7 @@ class Alert(Base):
     is_resolved = Column(Boolean, default=False)
     resolved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     resolved_at = Column(DateTime, nullable=True)
+    resolved_by_email = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     fitting = relationship("TrackFitting", back_populates="alerts")

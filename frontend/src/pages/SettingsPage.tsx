@@ -73,7 +73,7 @@ export default function SettingsPage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between py-2 border-b border-slate-100">
             <span className="text-sm text-slate-500">Application</span>
-            <span className="text-sm font-medium text-slate-800">RailQR Mark</span>
+            <span className="text-sm font-medium text-slate-800">RailSaathi</span>
           </div>
           <div className="flex items-center justify-between py-2 border-b border-slate-100">
             <span className="text-sm text-slate-500">Version</span>
@@ -105,13 +105,13 @@ export default function SettingsPage() {
         </div>
         <div className="space-y-4">
           <p className="text-sm text-slate-600 leading-relaxed">
-            RailQR Mark is an innovation prototype created for railway asset traceability and maintenance intelligence demonstration.
+            RailSaathi is an innovation prototype created for railway asset traceability and maintenance intelligence demonstration.
             It provides QR-based fitting identification, AI-powered risk prediction, inspection management, and maintenance workflow
             tools designed for Indian Railways infrastructure management.
           </p>
           <div className="glass p-4 rounded-lg border-l-4 border-amber-400 bg-amber-50/50">
             <p className="text-xs text-amber-800 leading-relaxed">
-              <strong>Disclaimer:</strong> RailQR Mark is an innovation prototype created for railway asset traceability and maintenance intelligence demonstration.
+              <strong>Disclaimer:</strong> RailSaathi is an innovation prototype created for railway asset traceability and maintenance intelligence demonstration.
               Synthetic data is used for fitting-level records and prototype analytics unless explicitly identified as sourced aggregate public data.
             </p>
           </div>

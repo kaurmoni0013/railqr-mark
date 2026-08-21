@@ -237,6 +237,14 @@ export const api = {
   fittingTypes: {
     list: () => request<FittingType[]>('/fitting-types'),
   },
+
+  camera: {
+    scan: (imageBase64: string) =>
+      request<{ success: boolean; qr_data: string | null; fitting_id: number | null; fitting_code: string | null; message: string }>(
+        '/camera/scan-qr',
+        { method: 'POST', body: JSON.stringify({ image_base64: imageBase64 }) },
+      ),
+  },
 };
 
 export default api;

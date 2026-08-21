@@ -23,6 +23,7 @@ os.makedirs(settings.QR_IMAGE_DIR, exist_ok=True)
 app.mount("/static", StaticFiles(directory=settings.STATIC_DIR), name="static")
 
 from app.api.auth import router as auth_router
+from app.api.camera_scan import router as camera_scan_router
 from app.api.dashboard import router as dashboard_router
 from app.api.fittings import router as fittings_router
 from app.api.qr import router as qr_router
@@ -36,6 +37,7 @@ from app.api.maps import router as maps_router
 from app.api.reference import router as reference_router
 
 app.include_router(auth_router)
+app.include_router(camera_scan_router)
 app.include_router(dashboard_router)
 app.include_router(fittings_router)
 app.include_router(qr_router)

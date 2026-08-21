@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -8,14 +8,14 @@ import {
   CheckCircle2,
   XCircle,
   ArrowRight,
-  ScanLine,
   Keyboard,
   AlertTriangle,
   ExternalLink,
-  Shield,
+  Video,
+  VideoOff,
 } from 'lucide-react';
 import { api } from '@/services/api';
-import type { TrackFittingDetail, QRVerifyResponse } from '@/types';
+import type { TrackFittingDetail } from '@/types';
 
 type ScanResult = 'success' | 'error' | null;
 
@@ -39,6 +39,91 @@ export default function ScanPage() {
   const [resultFitting, setResultFitting] = useState<TrackFittingDetail | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
 
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const scanIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+  const [scanning, setScanning] = useState(false);
+
+  const stopCamera = useCallback(() => {
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+      scanIntervalRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    setCameraActive(false);
+  }, []);
+
+  const captureAndScan = useCallback(async () => {
+    if (!videoRef.current || !canvasRef.current || scanning) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (video.readyState < 2) return;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0);
+
+    const dataUrl = canvas.toDataURL('image/png');
+    const base64 = dataUrl.split(',')[1];
+
+    setScanning(true);
+    try {
+      const result = await api.camera.scan(base64);
+      if (result.success && result.fitting_id) {
+        stopCamera();
+        const detail = await api.fittings.get(result.fitting_id);
+        setResultFitting(detail);
+        setScanResult('success');
+      }
+    } catch {
+      // scan failed silently, keep trying
+    } finally {
+      setScanning(false);
+    }
+  }, [scanning, stopCamera]);
+
+  const startCamera = useCallback(async () => {
+    try {
+      setCameraError('');
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } },
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+        setCameraActive(true);
+      }
+    } catch (err) {
+      setCameraError('Camera access denied. Use manual entry below.');
+      console.error('Camera error:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (cameraActive) {
+      scanIntervalRef.current = setInterval(captureAndScan, 1500);
+    }
+    return () => {
+      if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
+    };
+  }, [cameraActive, captureAndScan]);
+
+  useEffect(() => {
+    return () => {
+      if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
+      if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
+
   const handleVerify = async (data: string) => {
     if (!data.trim()) return;
     setLoading(true);
@@ -46,7 +131,7 @@ export default function ScanPage() {
     setResultFitting(null);
     setErrorMsg('');
     try {
-      const verifyResult: QRVerifyResponse = await api.qr.verify(data.trim());
+      const verifyResult = await api.qr.verify(data.trim());
       if (!verifyResult.valid || !verifyResult.fitting_id) {
         setScanResult('error');
         setErrorMsg('QR code not recognized. Please try again.');
@@ -93,11 +178,16 @@ export default function ScanPage() {
     setQrInput('');
     setManualSearch('');
     setErrorMsg('');
+    stopCamera();
+  };
+
+  const switchTab = (tab: 'camera' | 'manual') => {
+    reset();
+    setActiveTab(tab);
   };
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
-      {/* Header */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center">
         <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-rail-blue/10 mb-3">
           <QrCode className="w-7 h-7 text-rail-blue" />
@@ -106,10 +196,9 @@ export default function ScanPage() {
         <p className="text-sm text-rail-steel mt-1">Scan or search for track fitting digital passports</p>
       </motion.div>
 
-      {/* Tabs */}
       <div className="flex gap-2 justify-center">
         <button
-          onClick={() => { setActiveTab('camera'); reset(); }}
+          onClick={() => switchTab('camera')}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
             activeTab === 'camera'
               ? 'bg-rail-blue text-white shadow-md'
@@ -120,7 +209,7 @@ export default function ScanPage() {
           Camera Scanner
         </button>
         <button
-          onClick={() => { setActiveTab('manual'); reset(); }}
+          onClick={() => switchTab('manual')}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
             activeTab === 'manual'
               ? 'bg-rail-blue text-white shadow-md'
@@ -140,71 +229,101 @@ export default function ScanPage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
           >
-            {/* Camera Scanner Tab */}
             {activeTab === 'camera' && (
-              <div className="glass-card-static p-8">
-                {/* Scanning Frame */}
-                <div className="relative w-64 h-64 mx-auto mb-6">
-                  <div className="absolute inset-0 border-2 border-dashed border-slate-200 rounded-2xl" />
-                  {/* Animated corners */}
-                  <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-rail-blue rounded-tl-lg" />
-                  <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-rail-blue rounded-tr-lg" />
-                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-rail-blue rounded-bl-lg" />
-                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-rail-blue rounded-br-lg" />
-                  {/* Scan line animation */}
-                  <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 h-0.5 bg-gradient-to-r from-transparent via-rail-blue to-transparent opacity-50">
-                    <div
-                      className="w-full h-full bg-rail-blue"
-                      style={{
-                        animation: 'scanLine 2s ease-in-out infinite',
-                      }}
-                    />
-                  </div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <ScanLine className="w-12 h-12 text-rail-blue/20" />
-                  </div>
-                </div>
-                <style>{`
-                  @keyframes scanLine {
-                    0%, 100% { transform: translateY(-80px); }
-                    50% { transform: translateY(80px); }
-                  }
-                `}</style>
+              <div className="glass-card-static p-6 space-y-4">
+                <canvas ref={canvasRef} className="hidden" />
 
-                <p className="text-center text-sm text-slate-500 mb-4">
-                  Point your camera at the QR code on a track fitting
-                </p>
-                <p className="text-center text-xs text-slate-400 mb-6">
-                  Camera access required. For demo, enter QR data below.
-                </p>
-
-                {/* Demo QR Input */}
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={qrInput}
-                    onChange={(e) => setQrInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleVerify(qrInput)}
-                    placeholder='e.g. RAILQR:FF-001:V1'
-                    className="flex-1 px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-rail-blue/50 focus:ring-1 focus:ring-rail-blue/20 font-mono"
-                  />
-                  <button
-                    onClick={() => handleVerify(qrInput)}
-                    disabled={loading || !qrInput.trim()}
-                    className="px-5 py-2.5 bg-rail-blue text-white rounded-xl text-sm font-medium hover:bg-rail-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
-                  >
-                    {loading ? (
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    ) : (
-                      <QrCode className="w-4 h-4" />
+                {!cameraActive ? (
+                  <div className="text-center space-y-4">
+                    <div className="relative w-64 h-64 mx-auto rounded-2xl overflow-hidden border-2 border-dashed border-slate-200 bg-slate-50 flex items-center justify-center">
+                      <Video className="w-16 h-16 text-slate-300" />
+                    </div>
+                    <button
+                      onClick={startCamera}
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-rail-blue text-white rounded-xl text-sm font-medium hover:bg-rail-blue/90 transition-all shadow-md"
+                    >
+                      <Camera className="w-4 h-4" />
+                      Start Camera
+                    </button>
+                    {cameraError && (
+                      <p className="text-xs text-red-500">{cameraError}</p>
                     )}
-                    Verify
-                  </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="relative w-full max-w-md mx-auto rounded-2xl overflow-hidden border-2 border-rail-blue/30">
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full rounded-2xl"
+                      />
+                      <div className="absolute inset-0 pointer-events-none">
+                        <div className="absolute inset-8 border-2 border-rail-blue/40 rounded-xl" />
+                        <div className="absolute top-8 left-8 w-10 h-10 border-t-4 border-l-4 border-rail-blue rounded-tl-lg" />
+                        <div className="absolute top-8 right-8 w-10 h-10 border-t-4 border-r-4 border-rail-blue rounded-tr-lg" />
+                        <div className="absolute bottom-8 left-8 w-10 h-10 border-b-4 border-l-4 border-rail-blue rounded-bl-lg" />
+                        <div className="absolute bottom-8 right-8 w-10 h-10 border-b-4 border-r-4 border-rail-blue rounded-br-lg" />
+                        {scanning && (
+                          <div className="absolute inset-x-8 top-1/2 -translate-y-1/2 h-0.5">
+                            <div
+                              className="w-full h-full bg-rail-blue/60"
+                              style={{ animation: 'scanLine 2s ease-in-out infinite' }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <style>{`
+                      @keyframes scanLine {
+                        0%, 100% { transform: translateY(-120px); }
+                        50% { transform: translateY(120px); }
+                      }
+                    `}</style>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-slate-400">
+                        {scanning ? 'Scanning...' : 'Point camera at QR code'}
+                      </p>
+                      <button
+                        onClick={stopCamera}
+                        className="flex items-center gap-1 px-3 py-1.5 text-xs text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+                      >
+                        <VideoOff className="w-3 h-3" />
+                        Stop
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="border-t border-slate-100 pt-4">
+                  <p className="text-center text-xs text-slate-400 mb-2">Or enter QR data manually</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={qrInput}
+                      onChange={(e) => setQrInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleVerify(qrInput)}
+                      placeholder="e.g. RAILSAATHI:TF-NR-ERC-000001:V1"
+                      className="flex-1 px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-rail-blue/50 focus:ring-1 focus:ring-rail-blue/20 font-mono"
+                    />
+                    <button
+                      onClick={() => handleVerify(qrInput)}
+                      disabled={loading || !qrInput.trim()}
+                      className="px-5 py-2.5 bg-rail-blue text-white rounded-xl text-sm font-medium hover:bg-rail-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                    >
+                      {loading ? (
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <QrCode className="w-4 h-4" />
+                      )}
+                      Verify
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Manual Entry Tab */}
             {activeTab === 'manual' && (
               <div className="glass-card-static p-8">
                 <div className="max-w-md mx-auto">
@@ -218,7 +337,7 @@ export default function ScanPage() {
                       value={manualSearch}
                       onChange={(e) => setManualSearch(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleManualSearch()}
-                      placeholder='e.g. FIT-1 or FF-001'
+                      placeholder="e.g. TF-NR-ERC-000001 or #12345"
                       className="flex-1 px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-rail-blue/50 focus:ring-1 focus:ring-rail-blue/20 font-mono"
                     />
                     <button
@@ -240,7 +359,6 @@ export default function ScanPage() {
           </motion.div>
         )}
 
-        {/* Success Result */}
         {scanResult === 'success' && resultFitting && (
           <motion.div
             key="success"
@@ -262,7 +380,6 @@ export default function ScanPage() {
               <p className="text-sm text-slate-500">Fitting found in the system</p>
             </div>
 
-            {/* Fitting Card */}
             <div className="bg-white rounded-xl border border-slate-200 p-5 mb-4">
               <div className="flex items-start justify-between mb-4">
                 <div>
@@ -284,7 +401,7 @@ export default function ScanPage() {
                 </div>
                 <div>
                   <span className="text-xs text-slate-400">Location</span>
-                  <div className="font-medium text-slate-700">{resultFitting.location_name || '—'}</div>
+                  <div className="font-medium text-slate-700">{resultFitting.location_name || '\u2014'}</div>
                 </div>
                 <div>
                   <span className="text-xs text-slate-400">Health Score</span>
@@ -315,7 +432,6 @@ export default function ScanPage() {
           </motion.div>
         )}
 
-        {/* Error Result */}
         {scanResult === 'error' && (
           <motion.div
             key="error"

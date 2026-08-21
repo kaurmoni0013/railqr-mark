@@ -336,6 +336,7 @@ class InspectionUpdate(BaseModel):
     recommended_action: Optional[str] = None
     health_score: Optional[float] = None
     completed_date: Optional[datetime] = None
+    completed_by_email: Optional[str] = None
 
 
 class InspectionRead(BaseModel):
@@ -369,6 +370,7 @@ class MaintenanceTicketCreate(BaseModel):
     issue_description: Optional[str] = None
     estimated_cost: Optional[float] = None
     due_date: Optional[datetime] = None
+    completed_by_email: Optional[str] = None
 
 
 class MaintenanceTicketUpdate(BaseModel):
@@ -381,6 +383,7 @@ class MaintenanceTicketUpdate(BaseModel):
     due_date: Optional[datetime] = None
     completed_date: Optional[datetime] = None
     notes: Optional[str] = None
+    completed_by_email: Optional[str] = None
 
 
 class MaintenanceTicketRead(BaseModel):

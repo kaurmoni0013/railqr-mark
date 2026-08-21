@@ -174,7 +174,7 @@ export default function AppLayout() {
             </div>
             <div>
               <h1 className="text-sm font-bold tracking-wide text-white">
-                RailQR Mark
+                RailSaathi
               </h1>
               <p className="text-[10px] text-navy-200/50">
                 Asset Intelligence
@@ -236,7 +236,7 @@ export default function AppLayout() {
                       <QrCode size={20} className="text-white" />
                     </div>
                     <h1 className="text-sm font-bold text-white">
-                      RailQR Mark
+                      RailSaathi
                     </h1>
                   </div>
                   <button

@@ -127,28 +127,28 @@ DAMAGE_TYPES = [
 VISUAL_CONDITIONS = ["EXCELLENT", "GOOD", "FAIR", "POOR", "CRITICAL"]
 
 USER_ACCOUNTS = [
-    {"email": "admin@railqrmark.in", "name": "System Administrator", "role": "ADMIN", "pwd": "Admin@123"},
-    {"email": "officer.nr@railqrmark.in", "name": "Rajesh Kumar Singh", "role": "RAILWAY_OFFICER", "pwd": "Officer@123"},
-    {"email": "officer.cr@railqrmark.in", "name": "Amit Patil", "role": "RAILWAY_OFFICER", "pwd": "Officer@123"},
-    {"email": "officer.wr@railqrmark.in", "name": "Priya Mehta", "role": "RAILWAY_OFFICER", "pwd": "Officer@123"},
-    {"email": "officer.sr@railqrmark.in", "name": "Karthik Rajan", "role": "RAILWAY_OFFICER", "pwd": "Officer@123"},
-    {"email": "officer.er@railqrmark.in", "name": "Suman Das", "role": "RAILWAY_OFFICER", "pwd": "Officer@123"},
-    {"email": "inspector1@railqrmark.in", "name": "Vikram Sharma", "role": "INSPECTOR", "pwd": "Inspector@123"},
-    {"email": "inspector2@railqrmark.in", "name": "Anjali Verma", "role": "INSPECTOR", "pwd": "Inspector@123"},
-    {"email": "inspector3@railqrmark.in", "name": "Suresh Reddy", "role": "INSPECTOR", "pwd": "Inspector@123"},
-    {"email": "inspector4@railqrmark.in", "name": "Meena Kumari", "role": "INSPECTOR", "pwd": "Inspector@123"},
-    {"email": "inspector5@railqrmark.in", "name": "Prakash Nair", "role": "INSPECTOR", "pwd": "Inspector@123"},
-    {"email": "maint1@railqrmark.in", "name": "Arjun Gupta", "role": "MAINTENANCE_ENGINEER", "pwd": "Maint@123"},
-    {"email": "maint2@railqrmark.in", "name": "Deepak Joshi", "role": "MAINTENANCE_ENGINEER", "pwd": "Maint@123"},
-    {"email": "maint3@railqrmark.in", "name": "Sanjay Kulkarni", "role": "MAINTENANCE_ENGINEER", "pwd": "Maint@123"},
-    {"email": "viewer1@railqrmark.in", "name": "Neha Agarwal", "role": "VIEWER", "pwd": "Viewer@123"},
-    {"email": "viewer2@railqrmark.in", "name": "Ravi Shankar", "role": "VIEWER", "pwd": "Viewer@123"},
+    {"email": "admin@railsaathi.in", "name": "System Administrator", "role": "ADMIN", "pwd": "Admin@123"},
+    {"email": "officer.nr@railsaathi.in", "name": "Rajesh Kumar Singh", "role": "RAILWAY_OFFICER", "pwd": "Officer@123"},
+    {"email": "officer.cr@railsaathi.in", "name": "Amit Patil", "role": "RAILWAY_OFFICER", "pwd": "Officer@123"},
+    {"email": "officer.wr@railsaathi.in", "name": "Priya Mehta", "role": "RAILWAY_OFFICER", "pwd": "Officer@123"},
+    {"email": "officer.sr@railsaathi.in", "name": "Karthik Rajan", "role": "RAILWAY_OFFICER", "pwd": "Officer@123"},
+    {"email": "officer.er@railsaathi.in", "name": "Suman Das", "role": "RAILWAY_OFFICER", "pwd": "Officer@123"},
+    {"email": "inspector1@railsaathi.in", "name": "Vikram Sharma", "role": "INSPECTOR", "pwd": "Inspector@123"},
+    {"email": "inspector2@railsaathi.in", "name": "Anjali Verma", "role": "INSPECTOR", "pwd": "Inspector@123"},
+    {"email": "inspector3@railsaathi.in", "name": "Suresh Reddy", "role": "INSPECTOR", "pwd": "Inspector@123"},
+    {"email": "inspector4@railsaathi.in", "name": "Meena Kumari", "role": "INSPECTOR", "pwd": "Inspector@123"},
+    {"email": "inspector5@railsaathi.in", "name": "Prakash Nair", "role": "INSPECTOR", "pwd": "Inspector@123"},
+    {"email": "maint1@railsaathi.in", "name": "Arjun Gupta", "role": "MAINTENANCE_ENGINEER", "pwd": "Maint@123"},
+    {"email": "maint2@railsaathi.in", "name": "Deepak Joshi", "role": "MAINTENANCE_ENGINEER", "pwd": "Maint@123"},
+    {"email": "maint3@railsaathi.in", "name": "Sanjay Kulkarni", "role": "MAINTENANCE_ENGINEER", "pwd": "Maint@123"},
+    {"email": "viewer1@railsaathi.in", "name": "Neha Agarwal", "role": "VIEWER", "pwd": "Viewer@123"},
+    {"email": "viewer2@railsaathi.in", "name": "Ravi Shankar", "role": "VIEWER", "pwd": "Viewer@123"},
 ]
 
 
 def seed():
     print("=" * 60)
-    print("  RAILQR MARK - DEMO DATA SEEDER")
+    print("  RAILSAATHI - DEMO DATA SEEDER")
     print("=" * 60)
 
     print("\n[1/10] Creating tables...")
@@ -585,8 +585,8 @@ def seed():
     print(f"  AI Insights:      {total_insights:,}")
     print("=" * 60)
     print("\n  Login credentials:")
-    print("  Admin:  admin@railqrmark.in / Admin@123")
-    print("  Inspector: inspector1@railqrmark.in / Inspector@123")
+    print("  Admin:  admin@railsaathi.in / Admin@123")
+    print("  Inspector: inspector1@railsaathi.in / Inspector@123")
     print("=" * 60)
 
     db.close()

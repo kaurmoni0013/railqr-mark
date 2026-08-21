@@ -93,7 +93,7 @@ export default function QRGeneratePage() {
           <h2 style="margin-bottom:4px;">${result.fitting_code}</h2>
           <p style="color:#666;font-size:12px;margin-bottom:16px;">${result.qr_data}</p>
           <img src="data:image/png;base64,${result.qr_image_base64}" style="width:256px;height:256px;" />
-          <p style="color:#999;font-size:10px;margin-top:12px;">RailQR Mark v${result.version}</p>
+          <p style="color:#999;font-size:10px;margin-top:12px;">RailSaathi v${result.version}</p>
         </body>
       </html>
     `);

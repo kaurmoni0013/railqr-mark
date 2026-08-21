@@ -70,6 +70,13 @@ def create_ticket(data: MaintenanceTicketCreate, db: Session = Depends(get_db), 
     if not fitting:
         raise HTTPException(status_code=404, detail="Fitting not found")
 
+    if data.status in ("COMPLETED", "CLOSED"):
+        if not data.completed_by_email:
+            raise HTTPException(status_code=400, detail="completed_by_email is required to mark ticket as completed")
+        user_check = db.query(User).filter(User.email == data.completed_by_email, User.is_active == True).first()
+        if not user_check:
+            raise HTTPException(status_code=400, detail="Invalid email: no active user found with that email")
+
     ticket = MaintenanceTicket(
         ticket_code=_generate_ticket_code(db),
         **data.model_dump(),
@@ -106,8 +113,18 @@ def update_ticket(
     update_data = data.model_dump(exclude_unset=True)
     notes = update_data.pop("notes", None)
 
+    if data.status in ("COMPLETED", "CLOSED"):
+        if not data.completed_by_email:
+            raise HTTPException(status_code=400, detail="completed_by_email is required to mark ticket as completed")
+        user_check = db.query(User).filter(User.email == data.completed_by_email, User.is_active == True).first()
+        if not user_check:
+            raise HTTPException(status_code=400, detail="Invalid email: no active user found with that email")
+
     for key, value in update_data.items():
         setattr(ticket, key, value)
+
+    if data.status in ("COMPLETED", "CLOSED"):
+        ticket.completed_by_email = data.completed_by_email
 
     if data.status == "COMPLETED" and not ticket.completed_date:
         ticket.completed_date = datetime.utcnow()

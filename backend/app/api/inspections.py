@@ -97,6 +97,14 @@ def update_inspection(
     for key, value in update_data.items():
         setattr(inspection, key, value)
 
+    if data.status == "COMPLETED":
+        if not data.completed_by_email:
+            raise HTTPException(status_code=400, detail="completed_by_email is required to mark inspection as completed")
+        user_check = db.query(User).filter(User.email == data.completed_by_email, User.is_active == True).first()
+        if not user_check:
+            raise HTTPException(status_code=400, detail="Invalid email: no active user found with that email")
+        inspection.completed_by_email = data.completed_by_email
+
     if data.status == "COMPLETED" and not inspection.completed_date:
         inspection.completed_date = datetime.utcnow()
 
