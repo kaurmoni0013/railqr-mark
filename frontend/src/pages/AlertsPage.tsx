@@ -1,5 +1,6 @@
 import { usePagination } from '@/hooks/useApi';
 import { api } from '@/services/api';
+import { useAuth } from '@/hooks/useAuth';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { SkeletonTable } from '@/components/ui/Skeleton';
 import EmptyState from '@/components/ui/EmptyState';
@@ -8,6 +9,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
 export default function AlertsPage() {
+  const { user } = useAuth();
   const {
     data,
     page,
@@ -31,7 +33,7 @@ export default function AlertsPage() {
 
   async function handleResolve(id: number) {
     try {
-      await api.alerts.resolve(id);
+      await api.alerts.resolve(id, user?.email);
       toast.success('Alert resolved');
       refetch();
     } catch (err: unknown) {

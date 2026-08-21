@@ -13,6 +13,7 @@ import {
   ExternalLink,
   Video,
   VideoOff,
+  RefreshCw,
 } from 'lucide-react';
 import { api } from '@/services/api';
 import type { TrackFittingDetail } from '@/types';
@@ -46,6 +47,7 @@ export default function ScanPage() {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState('');
   const [scanning, setScanning] = useState(false);
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
 
   const stopCamera = useCallback(() => {
     if (scanIntervalRef.current) {
@@ -90,12 +92,22 @@ export default function ScanPage() {
     }
   }, [scanning, stopCamera]);
 
-  const startCamera = useCallback(async () => {
+  const startCamera = useCallback(async (facing?: 'environment' | 'user') => {
+    const mode = facing || facingMode;
     try {
       setCameraError('');
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } },
-      });
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: mode, width: { ideal: 640 }, height: { ideal: 480 } },
+        });
+      } catch {
+        const fallbackMode = mode === 'environment' ? 'user' : 'environment';
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: fallbackMode, width: { ideal: 640 }, height: { ideal: 480 } },
+        });
+        setFacingMode(fallbackMode);
+      }
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -106,7 +118,14 @@ export default function ScanPage() {
       setCameraError('Camera access denied. Use manual entry below.');
       console.error('Camera error:', err);
     }
-  }, []);
+  }, [facingMode]);
+
+  const switchCamera = useCallback(() => {
+    stopCamera();
+    const newMode = facingMode === 'environment' ? 'user' : 'environment';
+    setFacingMode(newMode);
+    setTimeout(() => startCamera(newMode), 200);
+  }, [facingMode, startCamera, stopCamera]);
 
   useEffect(() => {
     if (cameraActive) {
@@ -239,7 +258,7 @@ export default function ScanPage() {
                       <Video className="w-16 h-16 text-slate-300" />
                     </div>
                     <button
-                      onClick={startCamera}
+                      onClick={() => startCamera()}
                       className="inline-flex items-center gap-2 px-6 py-3 bg-rail-blue text-white rounded-xl text-sm font-medium hover:bg-rail-blue/90 transition-all shadow-md"
                     >
                       <Camera className="w-4 h-4" />
@@ -285,13 +304,22 @@ export default function ScanPage() {
                       <p className="text-xs text-slate-400">
                         {scanning ? 'Scanning...' : 'Point camera at QR code'}
                       </p>
-                      <button
-                        onClick={stopCamera}
-                        className="flex items-center gap-1 px-3 py-1.5 text-xs text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
-                      >
-                        <VideoOff className="w-3 h-3" />
-                        Stop
-                      </button>
+                      <div className="flex gap-1.5">
+                        <button
+                          onClick={switchCamera}
+                          className="flex items-center gap-1 px-3 py-1.5 text-xs text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          Flip
+                        </button>
+                        <button
+                          onClick={stopCamera}
+                          className="flex items-center gap-1 px-3 py-1.5 text-xs text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+                        >
+                          <VideoOff className="w-3 h-3" />
+                          Stop
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}

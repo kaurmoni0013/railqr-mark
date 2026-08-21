@@ -34,6 +34,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { format } from 'date-fns';
 import { api } from '@/services/api';
+import { useAuth } from '@/hooks/useAuth';
 import type {
   DashboardSummary,
   TrendData,
@@ -154,6 +155,7 @@ function TableSkeleton({ rows = 5 }: { rows?: number }) {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [trends, setTrends] = useState<TrendData[]>([]);
   const [healthDist, setHealthDist] = useState<HealthDistribution[]>([]);
@@ -683,7 +685,7 @@ export default function DashboardPage() {
                     <div className="flex gap-1.5 mt-2">
                       {!alert.is_acknowledged && (
                         <button
-                          onClick={(e) => { e.stopPropagation(); }}
+                          onClick={(e) => { e.stopPropagation(); api.alerts.acknowledge(alert.id).then(() => loadData()); }}
                           className="px-2 py-0.5 text-[10px] font-medium bg-slate-100 text-slate-600 rounded hover:bg-slate-200 transition-colors"
                         >
                           Acknowledge
@@ -691,7 +693,7 @@ export default function DashboardPage() {
                       )}
                       {!alert.is_resolved && (
                         <button
-                          onClick={(e) => { e.stopPropagation(); }}
+                          onClick={(e) => { e.stopPropagation(); api.alerts.resolve(alert.id, user?.email).then(() => loadData()); }}
                           className="px-2 py-0.5 text-[10px] font-medium bg-green-50 text-green-600 rounded hover:bg-green-100 transition-colors"
                         >
                           Resolve

@@ -86,7 +86,10 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: 'Request failed' }));
-    throw new Error(error.detail || `Request failed with status ${response.status}`);
+    const detail = Array.isArray(error.detail)
+      ? error.detail.map((d: Record<string, string>) => d.msg || d.detail || 'Validation error').join(', ')
+      : error.detail || `Request failed with status ${response.status}`;
+    throw new Error(detail);
   }
 
   const contentType = response.headers.get('content-type');
@@ -192,8 +195,11 @@ export const api = {
       request<PaginatedResponse<Alert>>(`/alerts${buildQueryString(params)}`),
     acknowledge: (id: number) =>
       request<Alert>(`/alerts/${id}/acknowledge`, { method: 'POST' }),
-    resolve: (id: number) =>
-      request<Alert>(`/alerts/${id}/resolve`, { method: 'POST' }),
+    resolve: (id: number, resolved_by_email?: string) =>
+      request<Alert>(`/alerts/${id}/resolve`, {
+        method: 'POST',
+        body: JSON.stringify({ resolved_by_email: resolved_by_email || '' }),
+      }),
   },
 
   ai: {

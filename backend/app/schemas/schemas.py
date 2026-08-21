@@ -433,6 +433,7 @@ class AlertRead(BaseModel):
     is_resolved: bool
     resolved_by: Optional[int] = None
     resolved_at: Optional[datetime] = None
+    resolved_by_email: Optional[str] = None
     created_at: datetime
 
 

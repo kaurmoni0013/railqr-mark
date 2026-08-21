@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { api } from '@/services/api';
+import ChatBot from '@/components/ChatBot';
 
 interface NavItem {
   to: string;
@@ -341,6 +342,8 @@ export default function AppLayout() {
           </footer>
         </div>
       </div>
+
+      <ChatBot />
     </div>
   );
 }
