@@ -202,7 +202,9 @@ class TrackFittingRead(BaseModel):
     id: int
     fitting_code: str
     fitting_type_id: int
+    fitting_type_name: Optional[str] = None
     vendor_id: int
+    vendor_name: Optional[str] = None
     batch_number: Optional[str] = None
     manufacturing_date: Optional[datetime] = None
     installation_date: Optional[datetime] = None

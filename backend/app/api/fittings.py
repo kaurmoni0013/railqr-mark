@@ -39,11 +39,18 @@ def list_fittings(
     if fitting_type_id:
         query = query.filter(TrackFitting.fitting_type_id == fitting_type_id)
     if search:
+        like = f"%{search}%"
+        query = query.outerjoin(FittingType, TrackFitting.fitting_type_id == FittingType.id)
+        query = query.outerjoin(Vendor, TrackFitting.vendor_id == Vendor.id)
         query = query.filter(
             or_(
-                TrackFitting.fitting_code.ilike(f"%{search}%"),
-                TrackFitting.location_name.ilike(f"%{search}%"),
-                TrackFitting.batch_number.ilike(f"%{search}%"),
+                TrackFitting.fitting_code.ilike(like),
+                TrackFitting.location_name.ilike(like),
+                TrackFitting.batch_number.ilike(like),
+                FittingType.name.ilike(like),
+                FittingType.code.ilike(like),
+                Vendor.name.ilike(like),
+                Vendor.code.ilike(like),
             )
         )
 
@@ -51,8 +58,28 @@ def list_fittings(
     total_pages = math.ceil(total / page_size) if total > 0 else 1
     items = query.order_by(TrackFitting.id.desc()).offset((page - 1) * page_size).limit(page_size).all()
 
+    enriched = []
+    for f in items:
+        ft_name = None
+        vnd_name = None
+        if hasattr(f, 'fitting_type') and f.fitting_type:
+            ft_name = f.fitting_type.name
+        if hasattr(f, 'vendor') and f.vendor:
+            vnd_name = f.vendor.name
+        enriched.append(TrackFittingRead(
+            id=f.id, fitting_code=f.fitting_code, fitting_type_id=f.fitting_type_id,
+            fitting_type_name=ft_name, vendor_id=f.vendor_id, vendor_name=vnd_name,
+            batch_number=f.batch_number, manufacturing_date=f.manufacturing_date,
+            installation_date=f.installation_date, zone_id=f.zone_id, division_id=f.division_id,
+            route_id=f.route_id, latitude=f.latitude, longitude=f.longitude,
+            location_name=f.location_name, status=f.status, health_score=f.health_score,
+            service_life_years=f.service_life_years, last_inspection_date=f.last_inspection_date,
+            next_inspection_date=f.next_inspection_date, created_at=f.created_at,
+            updated_at=f.updated_at,
+        ))
+
     return PaginatedResponse(
-        items=[TrackFittingRead.model_validate(i) for i in items],
+        items=enriched,
         total=total,
         page=page,
         page_size=page_size,

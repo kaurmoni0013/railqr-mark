@@ -59,7 +59,9 @@ export interface TrackFitting {
   id: number;
   fitting_code: string;
   fitting_type_id: number;
+  fitting_type_name: string | null;
   vendor_id: number;
+  vendor_name: string | null;
   batch_number: string | null;
   manufacturing_date: string | null;
   installation_date: string | null;
